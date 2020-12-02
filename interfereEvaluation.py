@@ -7,9 +7,11 @@
 # WARNING! All changes made in this file will be lost!
 import gc
 from tkinter import _flatten
-
-from PyQt5 import QtCore, QtGui, QtWidgets
+from shapely.geometry import *
+from geopandas import *
+import numpy as np
 import matplotlib.pyplot as plt
+from PyQt5 import QtCore, QtGui, QtWidgets
 import time
 import os
 # from PyRadar import Radar
@@ -39,20 +41,26 @@ class Ui_mainWindow(object):
         self.groupBox_9.setObjectName("groupBox_9")
         #处理选项按钮组
         self.radioButton_SVnum = QtWidgets.QRadioButton(self.groupBox_9) #卫星数分析
-        self.radioButton_SVnum.setGeometry(QtCore.QRect(15, 25, 89, 16))
+        self.radioButton_SVnum.setGeometry(QtCore.QRect(15, 25, 190, 16))
         self.radioButton_SVnum.setObjectName("radioButton_SVnum")
         self.radioButton_CNO = QtWidgets.QRadioButton(self.groupBox_9) #载噪比分析
-        self.radioButton_CNO.setGeometry(QtCore.QRect(15, 50, 100, 16))
+        self.radioButton_CNO.setGeometry(QtCore.QRect(15, 50, 190, 16))
         self.radioButton_CNO.setObjectName("radioButton_CNO")
         self.radioButton_DOP = QtWidgets.QRadioButton(self.groupBox_9)  # DOP值分析
-        self.radioButton_DOP.setGeometry(QtCore.QRect(15, 75, 100, 16))
+        self.radioButton_DOP.setGeometry(QtCore.QRect(15, 75, 190, 16))
         self.radioButton_DOP.setObjectName("radioButton_DOP")
         self.radioButton_DOPusab = QtWidgets.QRadioButton(self.groupBox_9)  # DOP可用性分析
-        self.radioButton_DOPusab.setGeometry(QtCore.QRect(15, 100, 100, 16))
+        self.radioButton_DOPusab.setGeometry(QtCore.QRect(15, 100, 190, 16))
         self.radioButton_DOPusab.setObjectName("radioButton_DOPusab")
         self.radioButton_flightPath = QtWidgets.QRadioButton(self.groupBox_9)  # 飞行轨迹
-        self.radioButton_flightPath.setGeometry(QtCore.QRect(15, 125, 100, 16))
+        self.radioButton_flightPath.setGeometry(QtCore.QRect(15, 125, 190, 16))
         self.radioButton_flightPath.setObjectName("radioButton_flightPath")
+        self.radioButton_posEffi = QtWidgets.QRadioButton(self.groupBox_9)  # 定位有效性
+        self.radioButton_posEffi.setGeometry(QtCore.QRect(15, 150, 190, 16))
+        self.radioButton_posEffi.setObjectName("radioButton_posEffi")
+        self.radioButton_flyH = QtWidgets.QRadioButton(self.groupBox_9)  # 飞行高度
+        self.radioButton_flyH.setGeometry(QtCore.QRect(15, 175, 190, 16))
+        self.radioButton_flyH.setObjectName("radioButton_flyH")
 
 
         self.buttonGroup =QtWidgets.QButtonGroup(self.groupBox_9) #将分析选项定义成按钮组
@@ -61,6 +69,8 @@ class Ui_mainWindow(object):
         self.buttonGroup.addButton(self.radioButton_DOP, 3) #DOP值分析 = 3
         self.buttonGroup.addButton(self.radioButton_DOPusab, 4) #DOP可用性分析 = 4
         self.buttonGroup.addButton(self.radioButton_flightPath, 5) #飞行轨迹 = 5
+        self.buttonGroup.addButton(self.radioButton_posEffi,6) #定位有效性 = 6
+        self.buttonGroup.addButton(self.radioButton_flyH,7) #飞行高度 = 7
 
         # 数据处理进度条
         self.progressBar_1 = QtWidgets.QProgressBar(self.groupBox_9)
@@ -347,6 +357,10 @@ class Ui_mainWindow(object):
             self.analysisOptions = 'DOP可用性'
         elif self.buttonGroup.checkedId() == 5:
             self.analysisOptions = '飞行轨迹'
+        elif self.buttonGroup.checkedId() == 6:
+            self.analysisOptions = '定位有效性'
+        elif self.buttonGroup.checkedId() == 7:
+            self.analysisOptions = '飞行高度'
         # print(self.analysisOptions)
 
     def process_data(self):
@@ -355,26 +369,37 @@ class Ui_mainWindow(object):
             if self.hasData == 0:
                 self.display_1(9)
             if self.analysisOptions == '卫星数':
+                self.display_1(2)
                 self.textBrowser_analysis.clear()
                 self.textBrowser_analysis.append("卫星数分析结果")
+                self.display_1(3)
                 # print(self.satlist)
                 # print(self.gpslist)
                 # print(self.bdslist)
                 # print("卫星数")
             elif self.analysisOptions == "载噪比":
                 self.textBrowser_analysis.clear()
-                self.textBrowser_analysis.append("载噪比分析结果")
-            elif self.analysisOptions == "载噪比":
-                self.textBrowser_analysis.clear()
+                self.display_1(2)
+                # TODO
+                self.display_1(3)
                 self.textBrowser_analysis.append("载噪比分析结果")
             elif self.analysisOptions == "DOP值":
                 self.textBrowser_analysis.clear()
+                self.display_1(2)
+                # TODO
+                self.display_1(3)
                 self.textBrowser_analysis.append("DOP值分析结果")
             elif self.analysisOptions == "DOP可用性":
                 self.textBrowser_analysis.clear()
+                self.display_1(2)
+                # TODO
+                self.display_1(3)
                 self.textBrowser_analysis.append("DOP可用性分析结果")
             elif self.analysisOptions == "飞行轨迹":
                 self.textBrowser_analysis.clear()
+                self.display_1(2)
+                # TODO
+                self.display_1(3)
                 self.textBrowser_analysis.append("飞行轨迹")
             else:
                 self.textBrowser_analysis.clear()
@@ -413,6 +438,139 @@ class Ui_mainWindow(object):
                 plt.show()
                 self.progressBar_1.setValue(100)
                 self.display_1(8)
+            elif self.analysisOptions == "载噪比":
+                self.progressBar_1.setValue(10)
+                # gpsCn0 = []
+                # bdsCn0 = []
+                # gcn0 = []
+                # bcn0 = []
+                # for i in self.ephdata:
+                #     gcn0.clear()
+                #     bcn0.clear()
+                #     for j in range(int(len(i["gpslist"])/4)):
+                #         if i["gpslist"][j * 4 + 3] != "":
+                #             gcn0.append(i["gpslist"][j*4])
+                #             gcn0.append(i["gpslist"][j*4+3])
+                #     for k in range(int(len(i["bdslist"])/4)):
+                #         if i["bdslist"][k * 4 + 3] != "":
+                #             bcn0.append(i["bdslist"][j*4])
+                #             bcn0.append(i["bdslist"][j*4+3])
+                #     gpsCn0.append(gcn0)
+                #     bdsCn0.append(bcn0)
+                # self.progressBar_1.setValue(30)
+                # print(gpsCn0)
+
+                y = [(1, 1, 2, 3, 9), (1, 1, 2, 4)]
+                x = [1, 2]
+
+                for xe, ye in zip(x, y):
+                    plt.scatter([xe] * len(ye), ye)
+
+                plt.xticks([1, 2])
+                plt.axes().set_xticklabels(['cat1', 'cat2'])
+                plt.show()
+
+
+                self.progressBar_1.setValue(100)
+            elif self.analysisOptions == "DOP值":
+                self.progressBar_1.setValue(10)
+                hdopList = []
+                pdopList = []
+                vdopList = []
+                for i in self.ephdata:
+                    if "HDOP" in i:
+                        hdopList.append(float(i["HDOP"]))
+                    if "Pdop" in i:
+                        pdopList.append(float(i["Pdop"]))
+                    if "Vdop" in i:
+                        vdopList.append(float(i["Vdop"]))
+                    # else:
+                    #     continue
+                self.progressBar_1.setValue(40)
+                # hdop绘制
+                hdopx = list(range(1, len(hdopList) + 1))
+                plt.scatter(hdopx, hdopList)
+                plt.show()
+                self.progressBar_1.setValue(60)
+                # pdop绘制
+                pdopx = list(range(1, len(pdopList) + 1))
+                plt.scatter(pdopx, pdopList)
+                # print(pdopList)
+                plt.show()
+                self.progressBar_1.setValue(80)
+                # vdop绘制
+                vdopx = list(range(1, len(vdopList) + 1))
+                plt.scatter(vdopx, vdopList)
+                plt.show()
+                self.progressBar_1.setValue(100)
+            elif self.analysisOptions == "飞行轨迹":
+                self.progressBar_1.setValue(10)
+                latList = []
+                lngList = []
+                for i in self.ephdata:
+                    if "lat" in i:
+                        du = i["lat"][:2]
+                        fen = i["lat"][2:-1]
+                        # print(float(i["lat"][:-1]))
+                        if int(i["posFlag"]) != 0:
+                            latList.append(float(du)+float(fen)/60)
+                    if "lng" in i:
+                        du = i["lng"][:3]
+                        fen = i["lng"][3:-1]
+                        # print(float(i["lat"][:-1]))
+                        if int(i["posFlag"]) != 0:
+                            lngList.append(float(du)+float(fen)/60)
+                self.progressBar_1.setValue(60)
+                pts = GeoSeries([Point(x, y) for x, y in zip(latList, lngList)])
+
+                pts.plot(marker='+', color='red', markersize=5)
+                plt.xlim(min(latList) - 0.00001, max(latList) + 0.00001)
+                plt.ylim(min(lngList) - 0.00001, max(lngList) + 0.00001)
+                # ptj.plot()
+                # x刻度数值旋转90°
+                # plt.xticks(rotation=90)
+                plt.grid("on")
+                plt.show()
+                self.progressBar_1.setValue(100)
+            elif self.analysisOptions == "定位有效性":
+                num = 0
+                noNum = 0
+                sppNum = 0
+                dgpsNum = 0
+                for i in self.ephdata:
+                    if int(i["posFlag"]) == 0:
+                        noNum+=1
+                    elif int(i["posFlag"]) == 1:
+                        sppNum+=1
+                    elif int(i["posFlag"]) == 2:
+                        dgpsNum+=1
+                    num+=1
+                fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
+                recipe = [str(noNum)+"  nopos",
+                          str(sppNum)+" spp",
+                          str(dgpsNum)+" dgps"]
+                data = [float(x.split()[0]) for x in recipe]
+                ingredients = [x.split()[-1] for x in recipe]
+                def func(pct, allvals):
+                    absolute = int(pct / 100. * np.sum(allvals))
+                    return "{:.1f}%\n({:d})".format(pct, absolute)
+                wedges, texts, autotexts = ax.pie(data, autopct=lambda pct: func(pct, data),
+                                                  textprops=dict(color="w"))
+                ax.legend(wedges, ingredients,
+                          title="Ingredients",
+                          loc="center left",
+                          bbox_to_anchor=(1, 0, 0.5, 1))
+                plt.setp(autotexts, size=8, weight="bold")
+                ax.set_title("Matplotlib bakery: A pie")
+                plt.show()
+            elif self.analysisOptions == "飞行高度":
+                hlist = []
+                for i in self.ephdata:
+                    if int(i["posFlag"]) != 0:
+                        hlist.append(float(i["h"][:-1]))
+                hx = list(range(1,len(hlist)+1))
+                plt.scatter(hx, hlist)
+                plt.show()
             else:
                 print("未选择")
 
@@ -434,6 +592,8 @@ class Ui_mainWindow(object):
         self.radioButton_DOP.setText(_translate("MainWindow", "DOP值分析"))
         self.radioButton_DOPusab.setText(_translate("MainWindow", "DOP可用性分析"))
         self.radioButton_flightPath.setText(_translate("MainWindow", "飞行轨迹"))
+        self.radioButton_posEffi.setText(_translate("MainWindow", "定位有效性分析"))
+        self.radioButton_flyH.setText(_translate("MainWindow", "飞行高度"))
         self.progressBar_1.setStatusTip(_translate("mainWindow", "数据处理进度"))
         self.start_process.setStatusTip(_translate("mainWindow", "开始处理所选数据"))
         self.start_process.setText(_translate("mainWindow", "开始处理"))
