@@ -7,6 +7,7 @@
 # WARNING! All changes made in this file will be lost!
 import gc
 from tkinter import _flatten
+from fiona import _shim, schema
 from shapely.geometry import *
 from geopandas import *
 import numpy as np
@@ -185,6 +186,7 @@ class Ui_mainWindow(object):
             self.textBrowser_1.append(self.data_absolute_path)
             # 打开并读取文件,进行数据预处理
             self.ephdata = [[0 for col in range(10)] for row in range(100000)]
+
             self.progressBar_1.setValue(10)
             self.DATA = ""
             num = 0
@@ -194,7 +196,7 @@ class Ui_mainWindow(object):
             GGAdic = {}
             with open(self.data_absolute_path,"r") as file_object:
                 for line in file_object:
-                    print(linenum)
+                    # print(linenum)
                     linenum +=1
                     if "GGA" in line:
                         navlist = line.split(",")
@@ -439,38 +441,45 @@ class Ui_mainWindow(object):
                 self.progressBar_1.setValue(100)
                 self.display_1(8)
             elif self.analysisOptions == "载噪比":
+                self.CN0List = [[0 for col in range(1)] for row in range(36)]
                 self.progressBar_1.setValue(10)
-                # gpsCn0 = []
-                # bdsCn0 = []
-                # gcn0 = []
-                # bcn0 = []
-                # for i in self.ephdata:
-                #     gcn0.clear()
-                #     bcn0.clear()
-                #     for j in range(int(len(i["gpslist"])/4)):
-                #         if i["gpslist"][j * 4 + 3] != "":
-                #             gcn0.append(i["gpslist"][j*4])
-                #             gcn0.append(i["gpslist"][j*4+3])
-                #     for k in range(int(len(i["bdslist"])/4)):
-                #         if i["bdslist"][k * 4 + 3] != "":
-                #             bcn0.append(i["bdslist"][j*4])
-                #             bcn0.append(i["bdslist"][j*4+3])
-                #     gpsCn0.append(gcn0)
-                #     bdsCn0.append(bcn0)
-                # self.progressBar_1.setValue(30)
-                # print(gpsCn0)
-
-                y = [(1, 1, 2, 3, 9), (1, 1, 2, 4)]
-                x = [1, 2]
-
-                for xe, ye in zip(x, y):
-                    plt.scatter([xe] * len(ye), ye)
-
-                plt.xticks([1, 2])
-                plt.axes().set_xticklabels(['cat1', 'cat2'])
+                gpsCn0 = []
+                bdsCn0 = []
+                gcn0 = []
+                bcn0 = []
+                for i in self.ephdata:
+                    gcn0.clear()
+                    bcn0.clear()
+                    for j in range(int(len(i["gpslist"])/4)):
+                        if i["gpslist"][j * 4 + 3] != "":
+                            gcn0.append(int(i["gpslist"][j*4]))
+                            gcn0.append(int(i["gpslist"][j*4+3]))
+                    for k in range(int(len(i["bdslist"])/4)):
+                        if i["bdslist"][k * 4 + 3] != "":
+                            bcn0.append(int(i["bdslist"][j*4]))
+                            bcn0.append(int(i["bdslist"][j*4+3]))
+                    gpsCn0.append(gcn0)
+                    bdsCn0.append(bcn0)
+                self.progressBar_1.setValue(30)
+                for i in gpsCn0:
+                    print(i)
+                    for j in range(int(len(i)/2)):
+                        m = 1
+                        n = 0
+                        for m in range(37):
+                            if i[2*j] == m:
+                                self.CN0List[n].append(i[2*j+1])
+                            n+=1
+                self.progressBar_1.setValue(80)
+                for i in self.CN0List:
+                    if i == [0]:
+                        pass
+                    else:
+                        x = list(range(1, len(i)))
+                        print(i)
+                        plt.scatter(x, i[1:])
+                self.progressBar_1.setValue(90)
                 plt.show()
-
-
                 self.progressBar_1.setValue(100)
             elif self.analysisOptions == "DOP值":
                 self.progressBar_1.setValue(10)
