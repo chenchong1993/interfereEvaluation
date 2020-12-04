@@ -7,6 +7,8 @@
 # WARNING! All changes made in this file will be lost!
 import gc
 from tkinter import _flatten
+
+from PyQt5.QtGui import QIcon
 from fiona import _shim, schema
 from shapely.geometry import *
 from geopandas import *
@@ -14,11 +16,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PyQt5 import QtCore, QtGui, QtWidgets
 import time
+from pylab import mpl
+import resource
 import os
-# from PyRadar import Radar
-# from PyRadar import ppi
-# from PIL import Image
-import json
 
 
 class Ui_mainWindow(object):
@@ -28,6 +28,7 @@ class Ui_mainWindow(object):
         mainWindow.setMinimumSize(QtCore.QSize(1200, 810))
         mainWindow.setMaximumSize(QtCore.QSize(1200, 810))
         mainWindow.setStatusTip("")
+        mainWindow.setWindowIcon(QIcon(":/cetc.ico"))
         self.centralWidget = QtWidgets.QWidget(mainWindow)
         self.centralWidget.setObjectName("centralWidget")
         self.tabWidget = QtWidgets.QTabWidget(self.centralWidget)
@@ -423,19 +424,34 @@ class Ui_mainWindow(object):
                 self.progressBar_1.setValue(10)
                 # 用于定位的卫星数
                 satx = list(range(1,len(self.satlist)+1))
-                plt.scatter(satx, self.satlist)
+                fig = plt.figure(num="定位用星数分析")
+                ax1 = fig.add_subplot(111)
+                ax1.set_title('Analysis of the number of satellites used for positioning')
+                plt.xlabel('Number of measurements')
+                plt.ylabel('Number of satellites')
+                plt.scatter(satx, self.satlist,marker = 'o',s = 5,c = 'g')
                 plt.ylim(-1, 15)
                 plt.show()
                 self.progressBar_1.setValue(40)
                 #可见北斗卫星数
                 BDSx = list(range(1, len(self.bdslist) + 1))
-                plt.scatter(BDSx, self.bdslist)
+                fig = plt.figure(num="可见北斗卫星数分析")
+                ax1 = fig.add_subplot(111)
+                ax1.set_title('Analysis of the number of BDS satellites that can be observed')
+                plt.xlabel('Number of measurements')
+                plt.ylabel('Number of satellites')
+                plt.scatter(BDSx, self.bdslist,marker = 'o',s = 5,c = 'r')
                 plt.ylim(-1, 15)
                 plt.show()
                 self.progressBar_1.setValue(80)
                 # 可见GPS卫星数
                 GPSx = list(range(1, len(self.gpslist) + 1))
-                plt.scatter(GPSx, self.gpslist)
+                fig = plt.figure(num="可见GPS卫星数分析")
+                ax1 = fig.add_subplot(111)
+                ax1.set_title('Analysis of the number of GPS satellites that can be observed')
+                plt.xlabel('Number of measurements')
+                plt.ylabel('Number of satellites')
+                plt.scatter(GPSx, self.gpslist,marker = 'o',s = 5,c = 'b')
                 plt.ylim(-1, 15)
                 plt.show()
                 self.progressBar_1.setValue(100)
@@ -445,15 +461,17 @@ class Ui_mainWindow(object):
                 self.progressBar_1.setValue(10)
                 gpsCn0 = []
                 bdsCn0 = []
-                gcn0 = []
-                bcn0 = []
                 for i in self.ephdata:
-                    gcn0.clear()
-                    bcn0.clear()
+                    gcn0 = []
+                    bcn0 = []
+                    a = int(len(i["gpslist"]) / 4)
                     for j in range(int(len(i["gpslist"])/4)):
                         if i["gpslist"][j * 4 + 3] != "":
                             gcn0.append(int(i["gpslist"][j*4]))
                             gcn0.append(int(i["gpslist"][j*4+3]))
+                        else:
+                            gcn0.append(int(i["gpslist"][j * 4]))
+                            gcn0.append(0)
                     for k in range(int(len(i["bdslist"])/4)):
                         if i["bdslist"][k * 4 + 3] != "":
                             bcn0.append(int(i["bdslist"][j*4]))
@@ -462,23 +480,30 @@ class Ui_mainWindow(object):
                     bdsCn0.append(bcn0)
                 self.progressBar_1.setValue(30)
                 for i in gpsCn0:
-                    print(i)
                     for j in range(int(len(i)/2)):
-                        m = 1
+                        m = 0
                         n = 0
-                        for m in range(37):
+                        for m in range(36):
                             if i[2*j] == m:
                                 self.CN0List[n].append(i[2*j+1])
                             n+=1
                 self.progressBar_1.setValue(80)
+                fig = plt.figure(num="载噪比分析")
+                # ax1 = fig.add_subplot(111)
+                ax1 = fig.add_axes([0.1, 0.1, 0.7, 0.75])
+                ax1.set_title('Carrier Noise Ratio analysis')
+                prn = 0
                 for i in self.CN0List:
                     if i == [0]:
                         pass
                     else:
                         x = list(range(1, len(i)))
-                        print(i)
-                        plt.scatter(x, i[1:])
+                        plt.scatter(x, i[1:],marker = '+',s = 5,label="PRN"+str(prn))
+                        ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+                    prn+=1
                 self.progressBar_1.setValue(90)
+                plt.xlabel('Number of measurements')
+                plt.ylabel('CNR')
                 plt.show()
                 self.progressBar_1.setValue(100)
             elif self.analysisOptions == "DOP值":
@@ -498,18 +523,33 @@ class Ui_mainWindow(object):
                 self.progressBar_1.setValue(40)
                 # hdop绘制
                 hdopx = list(range(1, len(hdopList) + 1))
-                plt.scatter(hdopx, hdopList)
+                fig = plt.figure(num="HDOP分析")
+                ax1 = fig.add_subplot(111)
+                ax1.set_title('HDOP analysis')
+                plt.xlabel('Number of measurements')
+                plt.ylabel('HDOP')
+                plt.scatter(hdopx, hdopList,marker = 'o',s = 5,c = 'r')
                 plt.show()
                 self.progressBar_1.setValue(60)
                 # pdop绘制
                 pdopx = list(range(1, len(pdopList) + 1))
-                plt.scatter(pdopx, pdopList)
+                fig = plt.figure(num="PDOP分析")
+                ax1 = fig.add_subplot(111)
+                ax1.set_title('PDOP analysis')
+                plt.xlabel('Number of measurements')
+                plt.ylabel('PDOP')
+                plt.scatter(pdopx, pdopList,marker = 'o',s = 5,c = 'g')
                 # print(pdopList)
                 plt.show()
                 self.progressBar_1.setValue(80)
                 # vdop绘制
                 vdopx = list(range(1, len(vdopList) + 1))
-                plt.scatter(vdopx, vdopList)
+                fig = plt.figure(num="VDOP分析")
+                ax1 = fig.add_subplot(111)
+                ax1.set_title('VDOP analysis')
+                plt.xlabel('Number of measurements')
+                plt.ylabel('VDOP')
+                plt.scatter(vdopx, vdopList,marker = 'o',s = 5,c = 'b')
                 plt.show()
                 self.progressBar_1.setValue(100)
             elif self.analysisOptions == "飞行轨迹":
@@ -531,8 +571,10 @@ class Ui_mainWindow(object):
                             lngList.append(float(du)+float(fen)/60)
                 self.progressBar_1.setValue(60)
                 pts = GeoSeries([Point(x, y) for x, y in zip(latList, lngList)])
-
                 pts.plot(marker='+', color='red', markersize=5)
+                plt.title("Flight trajectory")
+                plt.xlabel('Latitude')
+                plt.ylabel('Longitude')
                 plt.xlim(min(latList) - 0.00001, max(latList) + 0.00001)
                 plt.ylim(min(lngList) - 0.00001, max(lngList) + 0.00001)
                 # ptj.plot()
@@ -554,10 +596,10 @@ class Ui_mainWindow(object):
                     elif int(i["posFlag"]) == 2:
                         dgpsNum+=1
                     num+=1
-                fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
-                recipe = [str(noNum)+"  nopos",
-                          str(sppNum)+" spp",
-                          str(dgpsNum)+" dgps"]
+                fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"),num="定位有效性")
+                recipe = [str(noNum)+"  Not-positioned",
+                          str(sppNum)+" SPP",
+                          str(dgpsNum)+" DGPS"]
                 data = [float(x.split()[0]) for x in recipe]
                 ingredients = [x.split()[-1] for x in recipe]
                 def func(pct, allvals):
@@ -566,11 +608,11 @@ class Ui_mainWindow(object):
                 wedges, texts, autotexts = ax.pie(data, autopct=lambda pct: func(pct, data),
                                                   textprops=dict(color="w"))
                 ax.legend(wedges, ingredients,
-                          title="Ingredients",
+                          title="The type of positioning",
                           loc="center left",
                           bbox_to_anchor=(1, 0, 0.5, 1))
                 plt.setp(autotexts, size=8, weight="bold")
-                ax.set_title("Matplotlib bakery: A pie")
+                ax.set_title("Positioning effectiveness")
                 plt.show()
             elif self.analysisOptions == "飞行高度":
                 hlist = []
@@ -578,7 +620,12 @@ class Ui_mainWindow(object):
                     if int(i["posFlag"]) != 0:
                         hlist.append(float(i["h"][:-1]))
                 hx = list(range(1,len(hlist)+1))
-                plt.scatter(hx, hlist)
+                fig = plt.figure(num="飞行高度")
+                ax1 = fig.add_subplot(111)
+                ax1.set_title('Flight altitude')
+                plt.xlabel('Number of measurements')
+                plt.ylabel('Flight altitude/m')
+                plt.scatter(hx, hlist,marker = 'o',s = 5,c = 'r')
                 plt.show()
             else:
                 print("未选择")
@@ -627,8 +674,6 @@ class Ui_mainWindow(object):
         self.actionopen.setShortcut(_translate("mainWindow", "Ctrl+O"))
         self.action_2.setText(_translate("mainWindow", "退出程序"))
 
-
-
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
@@ -637,4 +682,5 @@ if __name__ == "__main__":
     ui.setupUi(mainWindow)
     mainWindow.show()
     sys.exit(app.exec_())
+
 
